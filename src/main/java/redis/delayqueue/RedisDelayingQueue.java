@@ -31,6 +31,7 @@ public class RedisDelayingQueue<T> {
 
     public void addTask(Task<T> task, Jedis jedis){
         String strTask = JSON.toJSONString(task);
+        //加上5s，表示这个消息至少过5s之后再做处理
         jedis.zadd(queueName, System.currentTimeMillis() + 5000, strTask);
     }
 
@@ -48,7 +49,7 @@ public class RedisDelayingQueue<T> {
             }
             String task = tasks.iterator().next();
 
-            //zrem 方法是多线程多进程争抢任务的关键，它的返回值决定了当前实例有没有抢到任务，
+            // zrem 方法是多线程多进程争抢任务的关键，它的返回值决定了当前实例有没有抢到任务，
             // 因为 loop 方法可能会被多个线程、多个进程调用，同一个任务可能会被多个进程线程抢到，
             // 通过 zrem 来决定唯一的属主。
             if (jedis.zrem(queueName, task) > 0){
@@ -66,7 +67,7 @@ public class RedisDelayingQueue<T> {
         final RedisDelayingQueue<String> redisDelayingQueue =
                 new RedisDelayingQueue<String>( "q-demo");
 
-        //生产者
+        //消息生产者
         Thread producer = new Thread(new Runnable() {
             public void run() {
                 Jedis jedis = jedisPool.getResource();
@@ -82,7 +83,7 @@ public class RedisDelayingQueue<T> {
             }
         }, "producer");
 
-        //消费者
+        //消息消费者1
         Thread consumer1 = new Thread(new Runnable() {
             public void run() {
                 Jedis jedis = jedisPool.getResource();
@@ -94,6 +95,7 @@ public class RedisDelayingQueue<T> {
             }
         }, "consumer1");
 
+        //消息消费者2
         Thread consumer2 = new Thread(new Runnable() {
             public void run() {
                 Jedis jedis = jedisPool.getResource();
